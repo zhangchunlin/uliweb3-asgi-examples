@@ -1,0 +1,14 @@
+{
+    "status": "success",
+    "message": "用户列表获取成功",
+    "data": [
+        {{for i, user in enumerate(users):}}
+        {
+            "id": {{= user.id}},
+            "name": "{{= user.name}}",
+            "email": "{{= user.email}}"
+        }{{= ',' if i < len(users) - 1 else ''}}
+        {{pass}}
+    ],
+    "total": {{= len(users)}}
+}

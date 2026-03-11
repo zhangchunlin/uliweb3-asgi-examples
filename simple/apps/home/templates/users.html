@@ -1,0 +1,30 @@
+{{extend "layout.html"}}
+
+{{block title}}用户列表 - Uliweb3 ASGI Demo{{end}}
+
+{{block main}}
+<div class="content">
+    <h2 class="page-title">所有用户</h2>
+    <p class="page-description">
+        以下是系统中的所有用户信息。您可以通过 API 进行 CRUD 操作。
+    </p>
+    <div class="stats">
+        <div class="stat-box">
+            <div class="number">{{= len(users)}}</div>
+            <div class="label">总用户数</div>
+        </div>
+    </div>
+    <div class="users-grid">
+        {{for user in users:}}
+        <div class="user-card">
+            <div class="avatar">{{= user['name'][0].upper() if user.get('name') else '?'}}</div>
+            <div class="name">{{= user.get('name', '')}}</div>
+            <div class="email">{{= user.get('email', '')}}</div>
+        </div>
+        {{pass}}
+    </div>
+    <div style="margin-top: 30px;">
+        <a href="/" class="back-link">← 返回首页</a>
+    </div>
+</div>
+{{end}}

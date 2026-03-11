@@ -1,0 +1,37 @@
+{{extend "layout.html"}}
+
+{{block main}}
+<div class="content">
+    <h2 class="page-title">欢迎来到 Uliweb3</h2>
+    <p class="page-description">
+        这是一个演示项目，展示了 Uliweb3 框架的强大功能。
+        您可以通过上方导航菜单浏览不同的页面和 API 接口。
+    </p>
+
+    <div class="stats">
+        <div class="stat-box">
+            <div class="number">{{= len(users)}}</div>
+            <div class="label">用户数量</div>
+        </div>
+        <div class="stat-box">
+            <div class="number">3</div>
+            <div class="label">API 端点</div>
+        </div>
+        <div class="stat-box">
+            <div class="number">100%</div>
+            <div class="label">ASGI 支持</div>
+        </div>
+    </div>
+
+    <h3 style="color: #333; margin-bottom: 15px;">👥 用户列表</h3>
+    <div class="users-grid">
+        {{for user in users:}}
+        <div class="user-card">
+            <div class="avatar">{{= user['name'][0].upper() if user.get('name') else '?'}}</div>
+            <div class="name">{{= user.get('name', '')}}</div>
+            <div class="email">{{= user.get('email', '')}}</div>
+        </div>
+        {{pass}}
+    </div>
+</div>
+{{end}}

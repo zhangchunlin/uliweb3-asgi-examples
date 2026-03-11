@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{block title}}Uliweb3 ASGI Demo{{end}}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🚀 Uliweb3 ASGI Demo</h1>
+                <p>欢迎使用 Uliweb3 现代 Web 框架</p>
+            </div>
+            <div class="nav-menu">
+                <a href="/">🏠 首页</a>
+                <a href="/about">📖 关于</a>
+                <a href="/users">👥 用户列表</a>
+                <a href="/api/users">🔌 API: Users</a>
+                <a href="/api/data">📡 API: Test JSON</a>
+                <a href="/websocket-test">🔌 WebSocket 测试</a>
+            </div>
+            {{block main}}
+            <div class="content">
+                <p>Welcome to Uliweb3</p>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</body>
+</html>

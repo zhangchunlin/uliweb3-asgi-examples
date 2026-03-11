@@ -1,0 +1,14 @@
+{
+    "status": "success",
+    "message": "API 测试成功",
+    "data": {
+        "timestamp": "{{= timestamp}}",
+        "version": "1.0.0",
+        "features": [
+            "ASGI Support",
+            "WebSocket",
+            "Template Rendering",
+            "JSON API"
+        ]
+    }
+}
