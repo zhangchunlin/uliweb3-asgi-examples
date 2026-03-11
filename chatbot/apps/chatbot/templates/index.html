@@ -459,9 +459,13 @@
                     break;
 
                 case 'message':
-                    // 添加回复内容到当前消息框
-                    addResponseContent(data.content);
+                    // 旧的 message 类型，保留向后兼容，但不再添加内容（内容已通过 chunk 发送）
                     // 完成消息
+                    finishMessage();
+                    break;
+
+                case 'message_done':
+                    // 新增：消息完成信号（不再发送完整的 message 内容）
                     finishMessage();
                     break;
 

@@ -379,12 +379,11 @@ async def websocket_chat(websocket):
                                     break
                         logger.info(f"=== Content chunk end (loops: {loop_count}) ===")
 
-                # 发送完成消息
+                # 发送完成信号（不再发送完整的 message，因为 chunk 已经包含了所有内容）
                 if full_response:
                     await websocket.send_json({
-                        'type': 'message',
+                        'type': 'message_done',
                         'role': 'assistant',
-                        'content': full_response
                     })
                     # 添加助手消息到历史
                     messages.append({'role': 'assistant', 'content': full_response})
