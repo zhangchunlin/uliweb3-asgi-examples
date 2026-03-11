@@ -504,6 +504,7 @@
         let currentMessageDiv = null;
         let currentThinkingContent = null;
         let currentResponseContent = null;
+        let currentThinkingIndicator = null;
 
         function addTypingMessage() {
             const messagesEl = document.getElementById('messages');
@@ -534,6 +535,7 @@
             currentMessageDiv = messageDiv;
             currentThinkingContent = messageDiv.querySelector('.thinking-content');
             currentResponseContent = messageDiv.querySelector('.response-content');
+            currentThinkingIndicator = messageDiv.querySelector('.thinking-indicator');
         }
 
         // 切换思考内容显示/隐藏
@@ -542,6 +544,14 @@
             const icon = indicator.querySelector('.expand-icon');
             content.classList.toggle('expanded');
             icon.classList.toggle('expanded');
+
+            // 更新提示文字
+            const textSpan = indicator.querySelector('span:last-child');
+            if (content.classList.contains('expanded')) {
+                textSpan.textContent = '点击收起思考';
+            } else {
+                textSpan.textContent = '点击查看思考';
+            }
         }
 
         // 添加思考内容
@@ -562,22 +572,26 @@
         function finishMessage() {
             if (!currentMessageDiv) return;
 
-            // 隐藏"正在思考"指示器
-            const indicator = currentMessageDiv.querySelector('.thinking-indicator');
             const thinkingContent = currentMessageDiv.querySelector('.thinking-content');
+            const thinkingText = thinkingContent ? thinkingContent.textContent : '';
 
-            if (indicator) {
-                indicator.style.display = 'none';
+            // 如果有思考内容，将"正在思考"改为可点击的"查看思考"
+            if (currentThinkingIndicator && thinkingText) {
+                const dots = currentThinkingIndicator.querySelector('.thinking-dots');
+                const textSpan = currentThinkingIndicator.querySelector('span:last-child');
+
+                // 移除动画点，改为静态图标
+                if (dots) {
+                    dots.style.display = 'none';
+                }
+                textSpan.textContent = '点击查看思考';
             }
 
-            // 如果有思考内容，保持展开状态
-            if (thinkingContent && thinkingContent.textContent) {
-                thinkingContent.classList.add('expanded');
-            }
-
+            // 保持引用以便后续清理
             currentMessageDiv = null;
             currentThinkingContent = null;
             currentResponseContent = null;
+            currentThinkingIndicator = null;
         }
 
         // 发送消息
