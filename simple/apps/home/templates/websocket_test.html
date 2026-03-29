@@ -1,93 +1,113 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket 测试</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-        }
-        .container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 5px;
-        }
-        #messages {
-            height: 300px;
-            border: 1px solid #ddd;
-            overflow-y: auto;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #f9f9f9;
-        }
-        .message {
-            margin: 5px 0;
-            padding: 5px;
-            border-radius: 3px;
-        }
-        .sent {
-            background: #e3f2fd;
-            text-align: right;
-        }
-        .received {
-            background: #f1f8e9;
-        }
-        .status {
-            padding: 5px 10px;
-            border-radius: 3px;
-            margin-bottom: 10px;
-        }
-        .connected {
-            background: #c8e6c9;
-            color: #2e7d32;
-        }
-        .disconnected {
-            background: #ffcdd2;
-            color: #c62828;
-        }
-        .connecting {
-            background: #fff9c4;
-            color: #f9a825;
-        }
-        input[type="text"] {
-            width: 70%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-        button {
-            padding: 8px 20px;
-            background: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #1565c0;
-        }
-        button:disabled {
-            background: #ccc;
-        }
-    </style>
-</head>
-<body>
-    <h1>WebSocket 测试</h1>
-    <div class="container">
+{{extend "layout.html"}}
+
+{{block title}}WebSocket 测试 - Uliweb3 ASGI Demo{{end}}
+
+{{block main}}
+<div class="content">
+    <h2 class="page-title">WebSocket 测试</h2>
+    <p class="page-description">
+        在此页面测试 WebSocket 实时通信功能。点击"连接"按钮建立 WebSocket 连接，
+        然后可以发送消息进行测试。
+    </p>
+
+    <div class="ws-container">
         <div id="status" class="status disconnected">未连接</div>
         <div id="messages"></div>
-        <div>
+        <div class="ws-input-area">
             <input type="text" id="messageInput" placeholder="输入消息..." disabled>
             <button id="sendBtn" onclick="sendMessage()" disabled>发送</button>
             <button id="connectBtn" onclick="toggleConnection()" disabled>连接</button>
         </div>
     </div>
 
-    <script>
+    <div style="margin-top: 30px;">
+        <a href="/" class="back-link">← 返回首页</a>
+    </div>
+</div>
+
+<style>
+.ws-container {
+    border: 1px solid #e9ecef;
+    padding: 20px;
+    border-radius: 12px;
+    background: #f8f9fa;
+}
+#messages {
+    height: 300px;
+    border: 1px solid #ddd;
+    overflow-y: auto;
+    padding: 10px;
+    margin-bottom: 15px;
+    background: white;
+    border-radius: 8px;
+}
+.message {
+    margin: 8px 0;
+    padding: 10px;
+    border-radius: 6px;
+}
+.sent {
+    background: #e3f2fd;
+    text-align: right;
+}
+.received {
+    background: #f1f8e9;
+}
+.status {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+.connected {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+.disconnected {
+    background: #ffcdd2;
+    color: #c62828;
+}
+.connecting {
+    background: #fff9c4;
+    color: #f9a825;
+}
+.ws-input-area {
+    display: flex;
+    gap: 10px;
+}
+input[type="text"] {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+input[type="text"]:focus {
+    outline: none;
+    border-color: #667eea;
+}
+button {
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+button:hover {
+    background: #764ba2;
+    transform: translateY(-2px);
+}
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+</style>
+
+<script>
         let ws = null;
 
         // 获取 WebSocket URL（自动使用当前主机）
@@ -178,5 +198,4 @@
             }
         });
     </script>
-</body>
-</html>
+{{end}}
