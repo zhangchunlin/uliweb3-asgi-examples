@@ -91,9 +91,11 @@ async def call_openai_api_stream(messages: list, model: str = None):
                         logger.info("Received [DONE], stream finished")
                         break
                     try:
-                        chunk_data = json.loads(data)
+                        # 注意：这里需要重新导入 json 模块，因为运行时 json 可能被替换为 uliweb 的 json 函数
+                        import json as json_module
+                        chunk_data = json_module.loads(data)
                         yield chunk_data
-                    except json.JSONDecodeError as e:
+                    except json_module.JSONDecodeError as e:
                         logger.warning(f"JSON decode error: {e}, line: {line[:100]}...")
                         continue
 
@@ -210,9 +212,11 @@ async def websocket_chat(websocket):
                 break
 
             # 解析消息
+            # 注意：这里需要重新导入 json 模块，因为运行时 json 可能被替换为 uliweb 的 json 函数
+            import json as json_module
             try:
-                message_data = json.loads(data)
-            except json.JSONDecodeError:
+                message_data = json_module.loads(data)
+            except json_module.JSONDecodeError:
                 # 如果不是 JSON，当作纯文本处理
                 message_data = {'type': 'message', 'content': data}
 
@@ -406,7 +410,8 @@ async def websocket_chat(websocket):
                 messages = messages[-20:]
 
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        import traceback
+        logger.error(f"WebSocket error: {e}\n{traceback.format_exc()}")
         await websocket.send_json({
             'type': 'error',
             'message': f'连接错误: {str(e)}'
