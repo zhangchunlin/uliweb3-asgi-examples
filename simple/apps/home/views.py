@@ -52,7 +52,7 @@ def users():
 
 # 用户列表 API - JSON 响应
 @expose('/api/users')
-def users_list():
+async def users_list():
     """用户列表 API - JSON 响应"""
     if request.method == 'GET':
         return json_func({
@@ -61,7 +61,7 @@ def users_list():
             'total': len(UserStore.get_all())
         })
     elif request.method == 'POST':
-        post_data = request.POST
+        post_data = await request.get_POST()
         new_user = {
             'id': len(UserStore.get_all()) + 1,
             'name': post_data.get('name', ''),
