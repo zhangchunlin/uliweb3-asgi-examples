@@ -10,7 +10,7 @@ import re
 import aiohttp
 from uliweb import expose, json as json_func, request, settings
 
-logger = logging.getLogger('uliweb')
+logger = logging.getLogger('chatbot')
 
 # 用于匹配 think 标签的正则表达式
 THINK_START_PATTERN = re.compile(r'<think>')
@@ -273,7 +273,12 @@ async def websocket_chat(websocket):
                 in_thinking = False
 
                 async for chunk in call_openai_api_stream(messages, model=config['model']):
-                    delta = chunk.get('choices', [{}])[0].get('delta', {})
+                    choices = chunk.get('choices')
+                    if not choices:
+                        # API 返回的 chunk 可能没有 choices（如仅包含 finish_reason）
+                        logger.debug(f"Skipping chunk without choices: {chunk}")
+                        continue
+                    delta = choices[0].get('delta', {})
                     content_chunk = delta.get('content', '')
 
                     if content_chunk:
