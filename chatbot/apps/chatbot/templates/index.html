@@ -47,6 +47,39 @@
             font-weight: 600;
         }
 
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .transport-toggle {
+            display: flex;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 3px;
+        }
+
+        .transport-toggle button {
+            padding: 5px 12px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 17px;
+            transition: all 0.2s;
+        }
+
+        .transport-toggle button.active {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+
+        .transport-toggle button:hover:not(.active) {
+            color: white;
+        }
+
         .header-info {
             display: flex;
             align-items: center;
@@ -347,11 +380,17 @@
     <div class="container">
         <div class="header">
             <h1>🤖 Chatbot</h1>
-            <div class="header-info">
-                <span class="url-badge" title="API URL: {{= base_url}}">{{= display_url}}</span>
-                <span class="model-badge" title="Model">{{= model}}</span>
+            <div class="header-controls">
+                <div class="transport-toggle">
+                    <button id="wsBtn" class="active" onclick="setTransport('websocket')">WebSocket</button>
+                    <button id="sseBtn" onclick="setTransport('sse')">SSE</button>
+                </div>
+                <div class="header-info">
+                    <span class="url-badge" title="API URL: {{= base_url}}">{{= display_url}}</span>
+                    <span class="model-badge" title="Model">{{= model}}</span>
+                </div>
+                <button class="clear-btn" onclick="clearChat()">清空对话</button>
             </div>
-            <button class="clear-btn" onclick="clearChat()">清空对话</button>
         </div>
 
         <div class="connection-status" id="status">
@@ -378,19 +417,81 @@
         let ws = null;
         let isConnected = false;
         let messageCount = 0;
+        let currentTransport = 'websocket';  // 当前传输方式
+        let sse = null;  // SSE EventSource
 
         // 获取 WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = protocol + '//' + window.location.host + '/ws/chat';
 
+        // 切换传输方式
+        function setTransport(transport) {
+            console.log('setTransport: switching from', currentTransport, 'to', transport);
+            if (transport === currentTransport) return;
+
+            // 断开当前连接
+            disconnect();
+
+            // 更新 UI
+            currentTransport = transport;
+            document.getElementById('wsBtn').classList.toggle('active', transport === 'websocket');
+            document.getElementById('sseBtn').classList.toggle('active', transport === 'sse');
+
+            // 清空聊天记录
+            clearChatDisplay();
+
+            // 连接新方式
+            connect();
+            console.log('setTransport: after connect, isConnected =', isConnected);
+        }
+
+        // 断开连接
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            if (sse) {
+                sse.close();
+                sse = null;
+            }
+            isConnected = false;
+        }
+
+        // 清空显示（不发送 clear 命令）
+        function clearChatDisplay() {
+            const messagesEl = document.getElementById('messages');
+            messagesEl.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">💬</div>
+                    <p>发送消息开始聊天</p>
+                </div>
+            `;
+        }
+
         // 连接 WebSocket
         function connect() {
+            console.log('connect: called, currentTransport =', currentTransport);
             const statusEl = document.getElementById('status');
             const statusText = document.getElementById('statusText');
 
             statusEl.className = 'connection-status';
             statusText.textContent = '正在连接...';
 
+            if (currentTransport === 'websocket') {
+                connectWebSocket(statusEl, statusText);
+            } else {
+                // SSE 模式下不需要预先连接，直接发送消息即可
+                isConnected = true;
+                console.log('connect: SSE mode, setting isConnected = true');
+                statusEl.className = 'connection-status connected';
+                statusText.textContent = '已就绪 (SSE)';
+                document.getElementById('sendBtn').disabled = false;
+            }
+        }
+
+        // 连接 WebSocket
+        function connectWebSocket(statusEl, statusText) {
             ws = new WebSocket(wsUrl);
 
             ws.onopen = function() {
@@ -412,13 +513,20 @@
 
             ws.onclose = function(event) {
                 console.log('WebSocket closed:', event.code, event.reason);
-                isConnected = false;
-                statusEl.className = 'connection-status';
-                statusText.textContent = '连接已断开 (code: ' + event.code + ')';
-                document.getElementById('sendBtn').disabled = true;
 
-                // 尝试重新连接
-                setTimeout(connect, 3000);
+                // 只有在仍然是 WebSocket 模式时才更新状态
+                if (currentTransport === 'websocket') {
+                    isConnected = false;
+                    statusEl.className = 'connection-status';
+                    statusText.textContent = '连接已断开 (code: ' + event.code + ')';
+                    document.getElementById('sendBtn').disabled = true;
+
+                    // 尝试重新连接
+                    setTimeout(connectWebSocket, 3000);
+                } else {
+                    // 如果切换到 SSE 模式，保留 isConnected 状态
+                    console.log('WebSocket closed but in SSE mode, keeping isConnected =', isConnected);
+                }
             };
 
             ws.onerror = function(error) {
@@ -426,6 +534,72 @@
                 statusEl.className = 'connection-status error';
                 statusText.textContent = '连接错误';
             };
+        }
+
+        // 连接 SSE
+        function connectSSE(message, statusEl, statusText) {
+            console.log('SSE: connectSSE called with message:', message);
+            console.log('SSE: currentTransport:', currentTransport);
+
+            // 显示用户消息
+            addMessage('user', message);
+
+            // 显示正在思考
+            messageCount++;
+            addTypingMessage();
+
+            statusEl.className = 'connection-status connected';
+            statusText.textContent = '正在接收响应...';
+
+            const sseUrl = '/sse/chat?message=' + encodeURIComponent(message);
+            console.log('SSE: creating EventSource with URL:', sseUrl);
+
+            const eventSource = new EventSource(sseUrl);
+            sse = eventSource;
+
+            eventSource.onopen = function() {
+                console.log('SSE: onopen fired');
+            };
+
+            eventSource.onmessage = function(event) {
+                console.log('SSE: onmessage received:', event.data);
+
+                // 跳过 [DONE] 消息（SSE 协议结束信号）
+                if (event.data === '[DONE]' || event.data.trim() === '[DONE]') {
+                    console.log('SSE: received [DONE], stream finished');
+                    eventSource.close();
+                    sse = null;
+                    return;
+                }
+
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (e) {
+                    console.error('SSE parse error:', e);
+                }
+            };
+
+            eventSource.onerror = function(error) {
+                console.error('SSE: onerror fired:', error);
+                console.log('SSE: readyState:', eventSource.readyState);
+                eventSource.close();
+                sse = null;
+                statusEl.className = 'connection-status error';
+                statusText.textContent = 'SSE 连接错误';
+                document.getElementById('sendBtn').disabled = false;
+            };
+
+            // 自定义事件处理（用于处理更复杂的数据）
+            eventSource.addEventListener('chunk', function(event) {
+                console.log('SSE: chunk event:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (e) {
+                    console.error('SSE chunk parse error:', e);
+                }
+            });
         }
 
         // 处理接收到的消息
@@ -603,16 +777,33 @@
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
-            if (!message || !isConnected) return;
+            console.log('sendMessage: message:', message);
+            console.log('sendMessage: isConnected:', isConnected);
+            console.log('sendMessage: currentTransport:', currentTransport);
 
-            // 添加用户消息
-            addMessage('user', message);
+            if (!message || !isConnected) {
+                console.log('sendMessage: early return, message empty or not connected');
+                return;
+            }
 
-            // 发送消息到服务器
-            ws.send(JSON.stringify({
-                type: 'message',
-                content: message
-            }));
+            const statusEl = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+
+            if (currentTransport === 'websocket') {
+                console.log('sendMessage: using WebSocket');
+                // 添加用户消息
+                addMessage('user', message);
+
+                // 发送消息到服务器
+                ws.send(JSON.stringify({
+                    type: 'message',
+                    content: message
+                }));
+            } else {
+                console.log('sendMessage: using SSE');
+                // SSE 模式
+                connectSSE(message, statusEl, statusText);
+            }
 
             // 清空输入框
             input.value = '';
@@ -629,17 +820,11 @@
 
         // 清空对话
         function clearChat() {
-            if (ws && isConnected) {
+            if (currentTransport === 'websocket' && ws && isConnected) {
                 ws.send(JSON.stringify({ type: 'clear' }));
             }
 
-            const messagesEl = document.getElementById('messages');
-            messagesEl.innerHTML = `
-                <div class="empty-state">
-                    <div class="icon">💬</div>
-                    <p>发送消息开始聊天</p>
-                </div>
-            `;
+            clearChatDisplay();
         }
 
         // 滚动到底部
