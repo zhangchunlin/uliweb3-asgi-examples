@@ -197,7 +197,27 @@ async def sse_stream_generator(message: str):
     config = get_api_config()
     logger.info(f"SSE stream: config model={config['model']}, base_url={config['base_url']}")
 
-    # 发送欢迎消息
+    # 消息历史（用于上下文）
+    messages = []
+
+    logger.info(f"SSE stream: received message='{message[:100]}...' (length={len(message)})")
+
+    # 特殊消息：__WELCOME__ 仅用于获取欢迎消息
+    if message == '__WELCOME__':
+        logger.info("SSE stream: special welcome message, sending welcome only")
+        # 发送欢迎消息
+        welcome = {
+            'type': 'welcome',
+            'message': f'欢迎连接到 Chatbot！当前模型: {config["model"]}',
+            'model': config['model'],
+            'base_url': config['base_url'],
+        }
+        welcome_data = f"data: {json_module.dumps(welcome, ensure_ascii=False)}\n\n"
+        logger.info(f"SSE stream: sending welcome, length={len(welcome_data)}")
+        yield welcome_data
+        return
+
+    # 普通消息：先发送欢迎消息
     welcome = {
         'type': 'welcome',
         'message': f'欢迎连接到 Chatbot！当前模型: {config["model"]}',
@@ -207,11 +227,6 @@ async def sse_stream_generator(message: str):
     welcome_data = f"data: {json_module.dumps(welcome, ensure_ascii=False)}\n\n"
     logger.info(f"SSE stream: sending welcome, length={len(welcome_data)}")
     yield welcome_data
-
-    # 消息历史（用于上下文）
-    messages = []
-
-    logger.info(f"SSE stream: received message='{message[:100]}...' (length={len(message)})")
 
     if not message:
         error_msg = {
@@ -348,8 +363,12 @@ async def sse_chat():
     message = request.params.get('message', '').strip()
     logger.info(f"SSE: received message='{message[:100]}...' (length={len(message)})")
 
+    # 创建 SSEStreamResponse
+    sse_response = SSEStreamResponse(message)
+    logger.info(f"SSE: SSEStreamResponse created, media_type={sse_response.media_type}")
+
     # 返回 ASGI 风格的流式响应
-    return SSEStreamResponse(message)
+    return sse_response
 
 
 @expose('/sse/chat', methods=['POST'])
@@ -913,7 +932,7 @@ class SSEStreamResponse(StarletteResponse):
         try:
             # 遍历生成器并发送每个数据块
             async for data in sse_stream_generator(self._message):
-                logger.info(f"SSEStreamResponse: sending data, length={len(data)}")
+                # logger.info(f"SSEStreamResponse: sending data, length={len(data)}")
                 await send({
                     'type': 'http.response.body',
                     'body': data.encode('utf-8'),

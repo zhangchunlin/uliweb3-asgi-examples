@@ -417,12 +417,19 @@
         let ws = null;
         let isConnected = false;
         let messageCount = 0;
-        let currentTransport = 'websocket';  // 当前传输方式
+        let currentTransport = localStorage.getItem('chatTransport') || 'websocket';  // 当前传输方式，从 localStorage 读取
         let sse = null;  // SSE EventSource
+        let welcomeShown = false;  // 欢迎句是否已显示
 
         // 获取 WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = protocol + '//' + window.location.host + '/ws/chat';
+
+        // 页面加载时应用保存的传输方式
+        function initTransportUI() {
+            document.getElementById('wsBtn').classList.toggle('active', currentTransport === 'websocket');
+            document.getElementById('sseBtn').classList.toggle('active', currentTransport === 'sse');
+        }
 
         // 切换传输方式
         function setTransport(transport) {
@@ -436,6 +443,9 @@
             currentTransport = transport;
             document.getElementById('wsBtn').classList.toggle('active', transport === 'websocket');
             document.getElementById('sseBtn').classList.toggle('active', transport === 'sse');
+
+            // 保存选择到 localStorage
+            localStorage.setItem('chatTransport', transport);
 
             // 清空聊天记录
             clearChatDisplay();
@@ -467,6 +477,7 @@
                     <p>发送消息开始聊天</p>
                 </div>
             `;
+            welcomeShown = false;  // 重置欢迎句标志
         }
 
         // 连接 WebSocket
@@ -481,12 +492,10 @@
             if (currentTransport === 'websocket') {
                 connectWebSocket(statusEl, statusText);
             } else {
-                // SSE 模式下不需要预先连接，直接发送消息即可
+                // SSE 模式：获取欢迎消息
                 isConnected = true;
-                console.log('connect: SSE mode, setting isConnected = true');
-                statusEl.className = 'connection-status connected';
-                statusText.textContent = '已就绪 (SSE)';
-                document.getElementById('sendBtn').disabled = false;
+                console.log('connect: SSE mode, fetching welcome');
+                fetchWelcome();
             }
         }
 
@@ -536,6 +545,53 @@
             };
         }
 
+        // 获取欢迎消息（SSE 模式）
+        function fetchWelcome() {
+            console.log('SSE: fetchWelcome called, welcomeShown =', welcomeShown);
+            const statusEl = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+
+            statusEl.className = 'connection-status';
+            statusText.textContent = '正在获取欢迎消息...';
+
+            // 使用一个特殊的空消息来获取欢迎句
+            const welcomeUrl = '/sse/chat?message=' + encodeURIComponent('__WELCOME__');
+            console.log('SSE: creating EventSource for welcome with URL:', welcomeUrl);
+
+            const welcomeSource = new EventSource(welcomeUrl);
+
+            welcomeSource.onmessage = function(event) {
+                console.log('SSE welcome: onmessage received:', event.data, 'welcomeShown =', welcomeShown);
+
+                if (event.data === '[DONE]' || event.data.trim() === '[DONE]') {
+                    welcomeSource.close();
+                    return;
+                }
+
+                try {
+                    const data = JSON.parse(event.data);
+                    // 只处理 welcome 消息，忽略其他消息
+                    if (data.type === 'welcome') {
+                        // 通过 handleMessage 处理，以便正确设置 welcomeShown 标志
+                        handleMessage(data);
+                        welcomeSource.close();
+                        statusEl.className = 'connection-status connected';
+                        statusText.textContent = '已就绪 (SSE)';
+                        console.log('SSE welcome: processed, welcomeShown =', welcomeShown);
+                    }
+                } catch (e) {
+                    console.error('SSE welcome parse error:', e);
+                }
+            };
+
+            welcomeSource.onerror = function(error) {
+                console.error('SSE welcome: onerror fired:', error);
+                welcomeSource.close();
+                statusEl.className = 'connection-status connected';
+                statusText.textContent = '已就绪 (SSE)';
+            };
+        }
+
         // 连接 SSE
         function connectSSE(message, statusEl, statusText) {
             console.log('SSE: connectSSE called with message:', message);
@@ -544,9 +600,7 @@
             // 显示用户消息
             addMessage('user', message);
 
-            // 显示正在思考
-            messageCount++;
-            addTypingMessage();
+            // 不再预先调用 addTypingMessage()，"正在思考"由服务器发送的 status 消息触发
 
             statusEl.className = 'connection-status connected';
             statusText.textContent = '正在接收响应...';
@@ -614,7 +668,11 @@
 
             switch (data.type) {
                 case 'welcome':
-                    addMessage('assistant', data.message);
+                    // 欢迎句只显示一次
+                    if (!welcomeShown) {
+                        addMessage('assistant', data.message);
+                        welcomeShown = true;
+                    }
                     break;
 
                 case 'status':
@@ -840,8 +898,11 @@
             return div.innerHTML;
         }
 
-        // 页面加载完成后连接 WebSocket
-        connect();
+        // 页面加载时初始化 UI 并连接
+        window.addEventListener('DOMContentLoaded', function() {
+            initTransportUI();  // 应用保存的传输方式
+            connect();
+        });
     </script>
 </body>
 </html>
